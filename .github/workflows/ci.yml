@@ -11,18 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Pobierz repozytorium
+      - name: Download the repository
         uses: actions/checkout@v4
 
-      - name: Uruchom aplikację i bazę danych
+      - name: Run docker compose
         run: docker compose up -d --build
 
-      - name: Sprawdź konfigurację Django
+      - name: Django check
         run: docker compose exec -T web python manage.py check
 
-      - name: Uruchom migracje
+      - name: Django migration
         run: docker compose exec -T web python manage.py migrate --noinput
 
-      - name: Zatrzymaj kontenery
+      - name: Turn off docker compose
         if: always()
         run: docker compose down -v
