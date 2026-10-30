@@ -14,6 +14,7 @@ services:
       retries: 12
   web:
     build: .
+    image: ${GHCR_IMAGE:?Set GHCR_IMAGE in .env}:${IMAGE_TAG:-latest}
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
