@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.test import TestCase
 
-from .models import Question
+from .models import Choice, Question
 
 
 class QuestionModelTests(TestCase):
@@ -66,7 +66,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
-            ['<Question: Past question.>']
+            ['<Question: Past question.>'], transform=repr
         )
 
     def test_future_question(self):
@@ -89,7 +89,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
-            ['<Question: Past question.>']
+            ['<Question: Past question.>'], transform=repr
         )
 
     def test_two_past_questions(self):
@@ -101,7 +101,7 @@ class QuestionIndexViewTests(TestCase):
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
-            ['<Question: Past question 2.>', '<Question: Past question 1.>']
+            ['<Question: Past question 2.>', '<Question: Past question 1.>'], transform=repr
         )
 
 
@@ -125,3 +125,30 @@ class QuestionDetailViewTests(TestCase):
         url = reverse('polls:detail', args=(past_question.id,))
         response = self.client.get(url)
         self.assertContains(response, past_question.question_text)
+
+
+class VoteViewTests(TestCase):
+    def setUp(self):
+        self.question = create_question(question_text="Choose an answer", days=-1)
+        self.choice = Choice.objects.create(question=self.question, choice_text="Yes")
+        self.url = reverse('polls:vote', args=(self.question.id,))
+
+    def test_vote_increments_choice_and_redirects_to_results(self):
+        response = self.client.post(self.url, {'choice': self.choice.id})
+        self.assertRedirects(response, reverse('polls:results', args=(self.question.id,)))
+        self.choice.refresh_from_db()
+        self.assertEqual(self.choice.votes, 1)
+
+    def test_vote_without_choice_displays_error(self):
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.context["error_message"], "You didn't select a choice.")
+        self.choice.refresh_from_db()
+        self.assertEqual(self.choice.votes, 0)
+
+    def test_vote_rejects_choice_from_another_question(self):
+        other_question = create_question(question_text="Another question", days=-1)
+        other_choice = Choice.objects.create(question=other_question, choice_text="No")
+        response = self.client.post(self.url, {'choice': other_choice.id})
+        self.assertEqual(response.context["error_message"], "You didn't select a choice.")
+        other_choice.refresh_from_db()
+        self.assertEqual(other_choice.votes, 0)
